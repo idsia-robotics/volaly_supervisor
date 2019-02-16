@@ -1,0 +1,108 @@
+<launch>
+    <arg name="namespace" value="/volaly"/>
+    <arg name="bag_prefix" default="volaly_drone"/>
+    <arg name="use_joystick" default="false"/>
+    <arg name="robot_name" default="bebop"/> <!-- Crazyflie -->
+    <arg name="bracelet_name" default="mwear"/> <!-- MetaWear -->
+    <arg name="mwear_address" value="c1:9d:0e:3c:f6:7e"/>
+
+    <!-- <include file="$(find hmri_bags)/launch/record.launch">
+        <arg name="prefix" value="$(arg bag_prefix)"/>
+    </include> -->
+
+    <group ns="$(arg namespace)">
+        <node name="$(arg robot_name)_actions" pkg="volaly_robots" type="drone_action.py" required="true" output="screen">
+            <param name="action_ns" value="/$(arg robot_name)"/>
+            <param name="joy_safety_topic" value="/$(arg robot_name)/joy"/>
+
+            <param name="robot_desired_pose_topic" value="/$(arg robot_name)/target"/>
+            <param name="robot_odom_topic" value="/$(arg robot_name)/odom"/>
+            <param name="robot_state_topic" value="/$(arg robot_name)/flight_state"/>
+            <param name="target_source_topic" value="/$(arg robot_name)/target_source"/>
+
+            <param name="distance_threshold" value="0.05"/>
+            <param name="set_xy_service" value="/$(arg robot_name)/set_xy"/>
+            <param name="set_pose_topic" value="/$(arg robot_name)/set_pose"/>
+            <param name="takeoff_service" value="/$(arg robot_name)/safe_takeoff"/>
+            <param name="land_service" value="/$(arg robot_name)/safe_land"/>
+            <param name="feedback_service" value="/$(arg robot_name)/give_feedback"/>
+        </node>
+
+        <include file="$(find volaly_kinematics)/launch/human_kinematics.launch">
+            <!-- <arg name="namespace" value="$(arg namespace)"/> -->
+            <arg name="publish_rate" value="50" />
+            <arg name="mwear_address" value="$(arg mwear_address)"/>
+            <arg name="robot_name" value="$(arg robot_name)"/>
+            <arg name="robot_frame" value="base_link"/>
+        </include>
+
+        <include file="$(find volaly_localization)/launch/motion_relloc.launch">
+            <arg name="robot_name" value="$(arg robot_name)"/>
+            <arg name="publish_rate" value="50"/>
+            <arg name="human_frame_id" value="human_footprint"/>
+            <arg name="tf_exp_time" value="60.0"/>
+            <arg name="robot_root_frame" value="World"/>
+
+            <arg name="ray_origin_frame" value="eyes"/>
+            <arg name="ray_direction_frame" value="pointer"/>
+            <arg name="ray_inverse" value="false"/>
+
+            <arg name="timewindow" value="6.0"/>
+            <arg name="freq" value="20.0"/>
+            <arg name="sample_size" value="180"/>
+
+            <arg name="residual_threshold_deg" value="10.0"/>
+        </include>
+
+        <rosparam param="task_waypoints" subst_value="true">
+            frame_id: 'World'
+            waypoints:
+                - {x:  0.0, y:  0.0, z:  0.6, yaw_deg:  0.0}
+                - {x:  1.2, y:  0.0, z:  0.6, yaw_deg:  0.0}
+                - {x:  0.6, y:  1.0, z:  0.6, yaw_deg:  0.0}
+        </rosparam>
+
+        <!-- Allow landing anywhere -->
+        <rosparam param="landing_spot">{x: nan, y: nan, z: nan, tolerance: nan}</rosparam>
+
+        <!-- Set the same node name for compatibility -->
+        <!--node if="$(arg use_joystick)" name="relloc_fsm" type="joystick_fsm.py" pkg="hmri_experiments" output="screen" required="true">
+            <param name="robot_state_topic" value="/$(arg robot_name)/state"/>
+        </node-->
+
+        <node unless="$(arg use_joystick)" name="drone_relloc_fsm" type="drone_relloc_fsm.py" pkg="volaly_supervisor" output="screen" required="true">
+            <param name="robot_odom_topic" value="/$(arg robot_name)/odom"/>
+            <param name="robot_state_topic" value="/$(arg robot_name)/flight_state"/>
+
+            <!-- Drone -->
+            <param name="led_topic" value="/$(arg robot_name)/led"/>
+
+            <!-- Bracelet -->
+            <param name="button_topic" value="human/$(arg bracelet_name)/button"/>
+            <param name="vibration_topic" value="human/$(arg bracelet_name)/vibration2"/>
+            <param name="vibration_pattern_topic" value="human/$(arg bracelet_name)/vibration_pattern"/>
+            <param name="hand_altitude_topic" value="human/$(arg bracelet_name)/altitude"/>
+            <param name="pointing_ray_topic" value="human/pointing_ray"/>
+
+            <param name="wrist_gesture_topic" value="human/wrist_gesture"/>
+            <param name="set_workspace_shape_service" value="human/set_workspace_shape"/>
+
+            <!-- Actions -->
+            <param name="waypoints_action_ns" value="/$(arg robot_name)/waypoints_action"/>
+            <param name="followme_action_ns" value="/$(arg robot_name)/followme_action"/>
+            <param name="takeoff_action_ns" value="/$(arg robot_name)/takeoff_action"/>
+            <param name="land_action_ns" value="/$(arg robot_name)/land_action"/>
+            <param name="feedback_action_ns" value="/$(arg robot_name)/feedback_action"/>
+            <param name="reset_odom_action_ns" value="/$(arg robot_name)/reset_odom_action"/>
+            <!-- <param name="relloc_action_ns" value="/motion_relloc/relloc_action"/> -->
+            <param name="relloc_action_ns" value="/motion_relloc/relloc_cont_action"/>
+
+            <param name="reset_odom" value="false"/>
+
+            <!-- Landing -->
+            <param name="motion_start_threshold" value="0.005"/>
+            <param name="motion_stop_threshold" value="0.005"/>
+            <param name="motion_timewindow" value="3.0"/>
+        </node>
+    </group>
+</launch>
