@@ -38,6 +38,7 @@
 
         <include file="$(find volaly_localization)/launch/motion_relloc.launch">
             <arg name="robot_name" value="$(arg robot_name)"/>
+            <arg name="robot_odom_topic" value="/$(arg robot_name)/mocap_odom"/>
             <arg name="publish_rate" value="50"/>
             <arg name="human_frame_id" value="human_footprint"/>
             <arg name="tf_exp_time" value="60.0"/>
