@@ -191,9 +191,6 @@ class FsmNode():
             with wait_user_sm:
                 smach.Concurrence.add('CHECK_BUTTON', CBStateExt(self.check_button, cb_kwargs = {'context': self}))
                 smach.Concurrence.add('CHECK_GESTURE', CBStateExt(self.check_gesture, cb_kwargs = {'context': self}))
-                smach.Concurrence.add('CHECK_WRIST_GESTURE',
-                    CBStateExt(self.check_wrist_gesture, cb_kwargs = {'context': self})
-                )
 
             smach.StateMachine.add('WAIT_USER', wait_user_sm,
                 transitions = {'button':  'CHECK_DRONE',
@@ -288,9 +285,9 @@ class FsmNode():
                     CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self})
                 )
 
-                # smach.Concurrence.add('CHECK_WRIST_GESTURE',
-                #     CBStateExt(self.check_wrist_gesture, cb_kwargs = {'context': self})
-                # )
+                smach.Concurrence.add('CHECK_WRIST_GESTURE',
+                    CBStateExt(self.check_wrist_gesture, cb_kwargs = {'context': self})
+                )
 
             smach.StateMachine.add('FOLLOW_POINTING', follow_pointing_sm,
                 transitions = {'landing': 'LAND',
