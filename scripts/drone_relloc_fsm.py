@@ -108,7 +108,7 @@ class FsmNode():
         self.mocap_relloc_action_ns = rospy.get_param('~mocap_relloc_action_ns', '/mocap_relloc/relloc_action')
 
         human_pose_topic = rospy.get_param('~human_pose_topic', '/optitrack/head')
-        self.sub_human_pose = rospy.Subsriber(human_pose_topic, PoseStamped, self.human_pose_cb)
+        self.sub_human_pose = rospy.Subscriber(human_pose_topic, PoseStamped, self.human_pose_cb)
         self.human_pose_msg = None
 
         human_joint_state_topic = rospy.get_param('~human_joint_state_topic', '{}/joint_states'.format(self.bracelet_name))
