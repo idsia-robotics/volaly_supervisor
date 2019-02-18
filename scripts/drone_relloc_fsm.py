@@ -16,6 +16,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, Duration, Float32, String, ColorRGBA
 from std_srvs.srv import Empty, EmptyRequest
 from geometry_msgs.msg import PoseStamped, Quaternion, Vector3Stamped
+from sensor_msgs.msg import JointState
 
 from volaly_msgs.msg import EmptyAction, EmptyGoal
 from volaly_msgs.msg import WaypointsAction, WaypointsGoal
