@@ -36,13 +36,15 @@
             <arg name="robot_frame" value="base_link"/>
         </include>
 
-        <include file="$(find volaly_localization)/launch/motion_relloc.launch">
+        <include file="$(find volaly_localization)/launch/mocap_relloc.launch">
             <arg name="robot_name" value="$(arg robot_name)"/>
             <arg name="robot_odom_topic" value="/$(arg robot_name)/mocap_odom"/>
             <arg name="publish_rate" value="50"/>
             <arg name="human_frame_id" value="human_footprint"/>
             <arg name="tf_exp_time" value="60.0"/>
             <arg name="robot_root_frame" value="World"/>
+
+            <arg name="human_pose_topic" value="/optitrack/head"/>
 
             <arg name="ray_origin_frame" value="eyes"/>
             <arg name="ray_direction_frame" value="pointer"/>
@@ -95,8 +97,14 @@
             <param name="land_action_ns" value="/$(arg robot_name)/land_action"/>
             <param name="feedback_action_ns" value="/$(arg robot_name)/feedback_action"/>
             <param name="reset_odom_action_ns" value="/$(arg robot_name)/reset_odom_action"/>
+
+            <param name="is_motion_relloc" value="false"/>
             <!-- <param name="relloc_action_ns" value="/motion_relloc/relloc_action"/> -->
             <param name="relloc_action_ns" value="/motion_relloc/relloc_cont_action"/>
+            <!-- MOCAP -->
+            <param name="human_pose_topic" value="/optitrack/head"/>
+            <param name="human_joint_state_topic" value="human/$(arg bracelet_name)/joint_states"/>
+            <param name="mocap_relloc_action_ns" value="/mocap_relloc/relloc_action"/>
 
             <param name="reset_odom" value="false"/>
 

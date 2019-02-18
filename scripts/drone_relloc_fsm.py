@@ -14,6 +14,7 @@ import tf_conversions as tfc
 
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, Duration, Float32, String, ColorRGBA
+from std_srvs.srv import Empty, EmptyRequest
 from geometry_msgs.msg import PoseStamped, Quaternion, Vector3Stamped
 
 from volaly_msgs.msg import EmptyAction, EmptyGoal
@@ -99,7 +100,21 @@ class FsmNode():
 
         self.reset_odom_flag = rospy.get_param('~reset_odom', True)
 
+
+        self.is_motion_relloc = rospy.get_param('~is_motion_relloc', True)
         self.relloc_action_ns = rospy.get_param('~relloc_action_ns', '/motion_relloc/relloc_cont_action')
+
+        ### MOCAP relloc and user geometry calibration
+        self.mocap_relloc_action_ns = rospy.get_param('~mocap_relloc_action_ns', '/mocap_relloc/relloc_action')
+
+        human_pose_topic = rospy.get_param('~human_pose_topic', '/optitrack/head')
+        self.sub_human_pose = rospy.Subsriber(human_pose_topic, PoseStamped, self.human_pose_cb)
+        self.human_pose_msg = None
+
+        human_joint_state_topic = rospy.get_param('~human_joint_state_topic', '{}/joint_states'.format(self.bracelet_name))
+        self.pub_human_joint_state = rospy.Publisher(human_joint_state_topic, JointState, latch = True, queue_size = 1)
+        ##############################################
+
 
         robot_odom_topic = rospy.get_param('~robot_odom_topic', '/drone/odom')
         self.sub_odom = rospy.Subscriber(robot_odom_topic, Odometry, self.robot_odom_cb)
@@ -114,6 +129,9 @@ class FsmNode():
 
         vibration_pattern_topic = rospy.get_param('~vibration_pattern_topic', '{}/vibration_pattern'.format(self.bracelet_name))
         self.pub_vibration_pattern = rospy.Publisher(vibration_pattern_topic, VibrationPattern, queue_size = 1)
+
+        set_yaw_origin_service = rospy.get_param('~set_yaw_origin_service', '{}/set_yaw_origin'.format(self.bracelet_name))
+        self.set_yaw_origin = rospy.ServiceProxy(set_yaw_origin_service, Empty)
 
         pointing_ray_topic = rospy.get_param('~pointing_ray_topic', 'human/pointing_ray')
 
@@ -226,21 +244,23 @@ class FsmNode():
                                    'aborted':   'WAIT_USER'}
             )
 
-            relloc_sm = smach.Concurrence(outcomes = ['succeeded', 'preempted', 'aborted'],
-                                          default_outcome = 'preempted',
-                                          outcome_map = {'succeeded': {'MOTION_RELLOC': 'succeeded'},
-                                                         'preempted': {'MOTION_RELLOC': 'preempted'},
-                                                         'aborted':   {'ROBOT_TASK':    'aborted',
-                                                                       'MOTION_RELLOC': 'aborted'}},
-                                          child_termination_cb = lambda _: True)
+            # relloc_sm = smach.Concurrence(outcomes = ['succeeded', 'preempted', 'aborted'],
+            #                               default_outcome = 'preempted',
+            #                               outcome_map = {'succeeded': {'MOTION_RELLOC': 'succeeded'},
+            #                                              'preempted': {'MOTION_RELLOC': 'preempted'},
+            #                                              'aborted':   {'ROBOT_TASK':    'aborted',
+            #                                                            'MOTION_RELLOC': 'aborted'}},
+            #                               child_termination_cb = lambda _: True)
 
-            with relloc_sm:
-                smach.Concurrence.add('ROBOT_TASK',
-                    smach_ros.SimpleActionState(self.waypoints_action_ns, WaypointsAction, goal = self.waypoints_goal)
-                )
-                smach.Concurrence.add('MOTION_RELLOC',
-                    smach_ros.SimpleActionState(self.relloc_action_ns, MotionRellocContAction)
-                )
+            # with relloc_sm:
+            #     smach.Concurrence.add('ROBOT_TASK',
+            #         smach_ros.SimpleActionState(self.waypoints_action_ns, WaypointsAction, goal = self.waypoints_goal)
+            #     )
+            #     smach.Concurrence.add('MOTION_RELLOC',
+            #         smach_ros.SimpleActionState(self.relloc_action_ns, MotionRellocContAction)
+            #     )
+
+            relloc_sm = self.create_relloc_sm(self.is_motion_relloc)
 
             smach.StateMachine.add('PERFORM_RELLOC', relloc_sm,
                 transitions = {'succeeded': 'NOTIFY_SELECTED',
@@ -310,6 +330,54 @@ class FsmNode():
         self.sis = smach_ros.IntrospectionServer('smach_server', self.sm, '/SM_RELLOC')
 
         rospy.wait_for_service(set_workspace_shape_service)
+
+    def create_relloc_sm(self, is_motion_relloc = True):
+        if is_motion_relloc:
+            rospy.loginfo('Creating SM for motion relloc')
+
+            relloc_sm = smach.Concurrence(outcomes = ['succeeded', 'preempted', 'aborted'],
+                                          default_outcome = 'preempted',
+                                          outcome_map = {'succeeded': {'MOTION_RELLOC': 'succeeded'},
+                                                         'preempted': {'MOTION_RELLOC': 'preempted'},
+                                                         'aborted':   {'ROBOT_TASK':    'aborted',
+                                                                       'MOTION_RELLOC': 'aborted'}},
+                                          child_termination_cb = lambda _: True)
+
+            with relloc_sm:
+                smach.Concurrence.add('ROBOT_TASK',
+                    smach_ros.SimpleActionState(self.waypoints_action_ns, WaypointsAction, goal = self.waypoints_goal)
+                )
+                smach.Concurrence.add('MOTION_RELLOC',
+                    smach_ros.SimpleActionState(self.relloc_action_ns, MotionRellocContAction)
+                )
+
+        # else MOCAP relloc
+        else:
+            rospy.loginfo('Creating SM for MOCAP relloc')
+
+            relloc_sm = smach.Sequence(outcomes = ['succeeded', 'preempted', 'aborted'],
+                                        connector_outcome = 'succeeded')
+
+            with relloc_sm:
+                smach.Sequence.add('CHECK_MAX_DEV',
+                    CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self}),
+                    {'succeeded': 'detach'},
+                    {'aborted': 'land'}
+                )
+                smach.Sequence.add('ADJUST_USER_GEOM',
+                    CBStateExt(self.adjust_user_geom, cb_kwargs = {'context': self}),
+                )
+                smach.Sequence.add('RESET_POINTING_YAW',
+                    ServiceState(self.set_yaw_origin_service, Empty)
+                )
+                smach.Concurrence.add('MOCAP_RELLOC',
+                    smach_ros.SimpleActionState(self.mocap_relloc_action_ns, EmptyAction)
+                )
+
+        return relloc_sm
+
+    def human_pose_cb(self, msg):
+        self.human_pose_msg = msg
 
     def get_landing_spot(self, x, y, z, tolerance = 0.6):
         return kdl.Vector(float(x), float(y), float(z)), tolerance
@@ -572,6 +640,26 @@ class FsmNode():
 
         context.pub_led_feedback.publish(context.color_auto)
         return 'preempted'
+
+    @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
+    def adjust_user_geom(state, udata, context):
+        if not context.human_pose_msg:
+            rospy.logerror('User\'s MOCAP pose is not known. Aborting...')
+            return 'aborted'
+
+        if state.preempt_requested():
+            state.service_preempt()
+            return 'preempted'
+
+        scale_factor = context.human_pose_msg.pose.position.z / 1.83
+
+        j_state = JointState()
+        j_state.header.stamp = context.human_pose_msg.stamp
+        j_state.name = ['footprint_to_neck', 'shoulder_to_wrist', 'wrist_to_finger']
+        j_state.position = [1.47 * scale_factor, 0.51 * scale_factor, 0.18 * scale_factor]
+        context.pub_human_joint_state.publish(j_state)
+
+        return 'succeeded'
 
     def is_at_landing_spot(self):
         rp = kdl.Vector(self.robot_current_pose.pose.position.x,
