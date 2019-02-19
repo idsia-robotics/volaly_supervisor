@@ -43,7 +43,11 @@
             <arg name="robot_odom_topic" value="/$(arg robot_name)/mocap_odom"/>
             <arg name="publish_rate" value="50"/>
             <arg name="human_frame_id" value="human_footprint"/>
-            <arg name="tf_exp_time" value="60.0"/>
+
+
+            <arg name="tf_exp_time" value="0.0"/>
+
+
             <arg name="robot_root_frame" value="World"/>
 
             <arg name="pointing_ray_topic" value="human/pointing_ray"/>
