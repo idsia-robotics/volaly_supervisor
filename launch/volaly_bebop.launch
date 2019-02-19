@@ -44,6 +44,7 @@
             <arg name="tf_exp_time" value="60.0"/>
             <arg name="robot_root_frame" value="World"/>
 
+            <arg name="pointing_ray_topic" value="human/pointing_ray"/>
             <arg name="human_pose_topic" value="/optitrack/head"/>
 
             <arg name="ray_origin_frame" value="eyes"/>
@@ -105,6 +106,7 @@
             <param name="human_pose_topic" value="/optitrack/head"/>
             <param name="human_joint_state_topic" value="human/$(arg bracelet_name)/joint_states"/>
             <param name="mocap_relloc_action_ns" value="/mocap_relloc/relloc_action"/>
+            <param name="set_yaw_origin_service" value="human/$(arg bracelet_name)/set_yaw_origin"/>
 
             <param name="reset_odom" value="false"/>
 
