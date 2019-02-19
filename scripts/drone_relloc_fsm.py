@@ -656,7 +656,7 @@ class FsmNode():
         scale_factor = context.human_pose_msg.pose.position.z / 1.83
 
         j_state = JointState()
-        j_state.header.stamp = context.human_pose_msg.stamp
+        j_state.header.stamp = context.human_pose_msg.header.stamp
         j_state.name = ['footprint_to_neck', 'shoulder_to_wrist', 'wrist_to_finger']
         j_state.position = [1.47 * scale_factor, 0.51 * scale_factor, 0.18 * scale_factor]
         context.pub_human_joint_state.publish(j_state)
