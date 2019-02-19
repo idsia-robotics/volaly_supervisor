@@ -3,6 +3,7 @@
     <arg name="bag_prefix" default="volaly_drone"/>
     <arg name="use_joystick" default="false"/>
     <arg name="robot_name" default="bebop"/> <!-- Crazyflie -->
+    <arg name="use_frame_ns" default="false"/>
     <arg name="bracelet_name" default="mwear"/> <!-- MetaWear -->
     <arg name="mwear_address" default="c1:9d:0e:3c:f6:7e"/>
 
@@ -33,7 +34,8 @@
             <arg name="publish_rate" value="50" />
             <arg name="mwear_address" value="$(arg mwear_address)"/>
             <arg name="robot_name" value="$(arg robot_name)"/>
-            <arg name="robot_frame" value="base_link"/>
+            <arg name="robot_frame" value="$(arg robot_name)/base_link" if="$(arg use_frame_ns)"/>
+            <arg name="robot_frame" value="base_link" unless="$(arg use_frame_ns)"/>
         </include>
 
         <include file="$(find volaly_localization)/launch/mocap_relloc.launch">
