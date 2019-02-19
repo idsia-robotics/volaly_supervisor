@@ -131,8 +131,10 @@ class FsmNode():
         vibration_pattern_topic = rospy.get_param('~vibration_pattern_topic', '{}/vibration_pattern'.format(self.bracelet_name))
         self.pub_vibration_pattern = rospy.Publisher(vibration_pattern_topic, VibrationPattern, queue_size = 1)
 
-        set_yaw_origin_service = rospy.get_param('~set_yaw_origin_service', '{}/set_yaw_origin'.format(self.bracelet_name))
-        self.set_yaw_origin = rospy.ServiceProxy(set_yaw_origin_service, Empty)
+        tmp_name = rospy.get_param('~set_yaw_origin_service', '{}/set_yaw_origin'.format(self.bracelet_name))
+        self.set_yaw_origin_service = rospy.get_namespace() + tmp_name
+
+        rospy.loginfo('Set yaw origin service: ' + self.set_yaw_origin_service)
 
         pointing_ray_topic = rospy.get_param('~pointing_ray_topic', 'human/pointing_ray')
 
