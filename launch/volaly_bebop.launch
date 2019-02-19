@@ -4,7 +4,7 @@
     <arg name="use_joystick" default="false"/>
     <arg name="robot_name" default="bebop"/> <!-- Crazyflie -->
     <arg name="bracelet_name" default="mwear"/> <!-- MetaWear -->
-    <arg name="mwear_address" value="c1:9d:0e:3c:f6:7e"/>
+    <arg name="mwear_address" default="c1:9d:0e:3c:f6:7e"/>
 
     <!-- <include file="$(find hmri_bags)/launch/record.launch">
         <arg name="prefix" value="$(arg bag_prefix)"/>
