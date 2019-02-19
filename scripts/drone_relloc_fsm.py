@@ -16,7 +16,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, Duration, Float32, String, ColorRGBA
 from std_srvs.srv import Empty, EmptyRequest
 from geometry_msgs.msg import PoseStamped, Quaternion, Vector3Stamped
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Joy
 
 from volaly_msgs.msg import EmptyAction, EmptyGoal
 from volaly_msgs.msg import WaypointsAction, WaypointsGoal
@@ -73,6 +73,16 @@ class FsmNode():
         self.last_button = None
         self.button_pressed = False
         self.button_released = False
+
+        joy_topic = rospy.get_param('~joy_topic', '/drone/joy')
+        self.sub_joy = rospy.Subscriber(joy_topic, Joy, self.joy_cb)
+        self.joy_msg = None
+        tmp_button = rospy.get_param('~joy_workspace_button', 6) # Left Trigger
+        if isinstance(tmp_button, int) and tmp_button > 0:
+            self.joy_workspace_button = tmp_button
+        else:
+            # rospy.logfatal()
+            raise ValueError('joy_workspace_button must be integer and greater than 0, instead its value is: {}'.format(tmp_button))
 
         landing_spot = rospy.get_param('landing_spot', {'x': float('nan'), 'y': float('nan'), 'z': float('nan'), 'tolerance': float('nan')})
         self.landing_spot, self.landing_tolerance = self.get_landing_spot(**landing_spot)
@@ -293,8 +303,17 @@ class FsmNode():
                     CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self})
                 )
 
-                smach.Concurrence.add('CHECK_WRIST_GESTURE',
-                    CBStateExt(self.check_wrist_gesture, cb_kwargs = {'context': self})
+                # smach.Concurrence.add('CHECK_WRIST_GESTURE',
+                #     CBStateExt(self.check_wrist_gesture, cb_kwargs = {'context': self})
+                # )
+
+                smach.Concurrence.add('ADJUST_WORKSPACE_SHAPE',
+                    CBStateExt(self.monitor_joy,
+                        cb_kwargs = {'context': self,
+                                     'button': self.joy_workspace_button, # Left Trigger
+                                     'released_wspace': SetWorkspaceShapeRequest.WORKSPACE_XY_PLANE,
+                                     'pressed_wspace': SetWorkspaceShapeRequest.WORKSPACE_CYLINDER
+                                     })
                 )
 
             smach.StateMachine.add('FOLLOW_POINTING', follow_pointing_sm,
@@ -362,6 +381,9 @@ class FsmNode():
                 )
 
         return relloc_sm
+
+    def joy_cb(self, msg):
+        self.joy_msg = msg
 
     def human_pose_cb(self, msg):
         self.human_pose_msg = msg
@@ -537,6 +559,36 @@ class FsmNode():
             loop_rate.sleep()
 
         wrist_sub.unregister()
+
+        return 'preempted'
+
+    @smach.cb_interface(outcomes = ['preempted', 'aborted'])
+    def monitor_joy(state, udata, context, button, released_wspace, pressed_wspace):
+        loop_rate = rospy.Rate(50.0) # 50Hz
+
+        while not rospy.is_shutdown():
+            if context.joy_msg:
+                if context.joy_msg.header.stamp + rospy.Duration(1.0) < rospy.Time.now():
+                    context.joy_msg = None
+                    continue
+            else:
+                continue
+
+            if button < len(context.joy_msg.buttons):
+                if context.joy_msg.buttons[button]:
+                    context.set_workspace_shape('', pressed_wspace)
+                else:
+                    context.set_workspace_shape('', released_wspace)
+            else:
+                rospy.logerror('Specified joy button index [{}] is out of bounds, max index is {}'.format(button, len(context.joy_msg.buttons)))
+                return 'aborted'
+
+
+            if state.preempt_requested():
+                state.service_preempt()
+                break
+
+            loop_rate.sleep()
 
         return 'preempted'
 
