@@ -247,21 +247,6 @@ class FsmNode():
                                    'aborted':   'WAIT_USER'}
             )
 
-            # relloc_sm = smach.Concurrence(outcomes = ['succeeded', 'preempted', 'aborted'],
-            #                               default_outcome = 'preempted',
-            #                               outcome_map = {'succeeded': {'MOTION_RELLOC': 'succeeded'},
-            #                                              'preempted': {'MOTION_RELLOC': 'preempted'},
-            #                                              'aborted':   {'ROBOT_TASK':    'aborted',
-            #                                                            'MOTION_RELLOC': 'aborted'}},
-            #                               child_termination_cb = lambda _: True)
-
-            # with relloc_sm:
-            #     smach.Concurrence.add('ROBOT_TASK',
-            #         smach_ros.SimpleActionState(self.waypoints_action_ns, WaypointsAction, goal = self.waypoints_goal)
-            #     )
-            #     smach.Concurrence.add('MOTION_RELLOC',
-            #         smach_ros.SimpleActionState(self.relloc_action_ns, MotionRellocContAction)
-            #     )
 
             relloc_sm = self.create_relloc_sm(self.is_motion_relloc)
 
