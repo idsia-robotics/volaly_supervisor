@@ -566,27 +566,37 @@ class FsmNode():
     def monitor_joy(state, udata, context, button, released_wspace, pressed_wspace):
         loop_rate = rospy.Rate(50.0) # 50Hz
 
+        last_joy_buttons = None
+
         while not rospy.is_shutdown():
-            if context.joy_msg:
+            if context.joy_msg and last_joy_buttons:
+                # (cur ^ old) -- changed buttons
+                changed_buttons = np.logical_xor(context.joy_msg.buttons, last_joy_buttons)
+
                 if context.joy_msg.header.stamp + rospy.Duration(1.0) < rospy.Time.now():
                     context.joy_msg = None
-                    continue
-            else:
-                continue
-
-            if button < len(context.joy_msg.buttons):
-                if context.joy_msg.buttons[button]:
-                    context.set_workspace_shape('', pressed_wspace)
                 else:
-                    context.set_workspace_shape('', released_wspace)
-            else:
-                rospy.logerror('Specified joy button index [{}] is out of bounds, max index is {}'.format(button, len(context.joy_msg.buttons)))
-                return 'aborted'
-
+                    if button < len(context.joy_msg.buttons):
+                        try:
+                            # Only process if changed
+                            if changed_buttons[button]:
+                                if context.joy_msg.buttons[button]:
+                                    context.set_workspace_shape('', pressed_wspace)
+                                    rospy.loginfo('Changed workspace to: {}'.format(pressed_wspace))
+                                else:
+                                    context.set_workspace_shape('', released_wspace)
+                                    rospy.loginfo('Changed workspace to: {}'.format(released_wspace))
+                        except rospy.ServiceException, e:
+                            rospy.logwarn(e.message)
+                    else:
+                        rospy.logerr('Specified joy button index [{}] is out of bounds, max index is {}'.format(button, len(context.joy_msg.buttons)))
+                        return 'aborted'
 
             if state.preempt_requested():
                 state.service_preempt()
                 break
+
+            last_joy_buttons = context.joy_msg.buttons
 
             loop_rate.sleep()
 
