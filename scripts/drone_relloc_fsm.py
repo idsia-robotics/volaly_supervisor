@@ -683,7 +683,7 @@ class FsmNode():
     @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
     def adjust_user_geom(state, udata, context):
         if not context.human_pose_msg:
-            rospy.logerror('User\'s MOCAP pose is not known. Aborting...')
+            rospy.logerr('User\'s MOCAP pose is not known. Aborting...')
             return 'aborted'
 
         if state.preempt_requested():
