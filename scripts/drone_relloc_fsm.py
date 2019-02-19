@@ -362,18 +362,17 @@ class FsmNode():
                                         connector_outcome = 'succeeded')
 
             with relloc_sm:
-                smach.Sequence.add('CHECK_MAX_DEV',
+                smach.Sequence.add_auto('CHECK_MAX_DEV',
                     CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self}),
-                    {'succeeded': 'detach'},
-                    {'aborted': 'land'}
+                    ['detach', 'land']
                 )
                 smach.Sequence.add('ADJUST_USER_GEOM',
                     CBStateExt(self.adjust_user_geom, cb_kwargs = {'context': self}),
                 )
                 smach.Sequence.add('RESET_POINTING_YAW',
-                    ServiceState(self.set_yaw_origin_service, Empty)
+                    smach_ros.ServiceState(self.set_yaw_origin_service, Empty)
                 )
-                smach.Concurrence.add('MOCAP_RELLOC',
+                smach.Sequence.add('MOCAP_RELLOC',
                     smach_ros.SimpleActionState(self.mocap_relloc_action_ns, EmptyAction)
                 )
 
