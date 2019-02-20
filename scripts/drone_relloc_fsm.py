@@ -615,7 +615,12 @@ class FsmNode():
                                 else:
                                     context.set_workspace_shape('', released_wspace, False)
                                     rospy.loginfo('Changed workspace to: {}'.format(released_wspace))
+
+                                context.pub_vibration.publish(rospy.Duration(0.1))
                         except rospy.ServiceException, e:
+                            context.pub_led_feedback.publish(ColorRGBA(1.0, 0.0, 0.0, 1.0))
+                            rospy.sleep(1.0)
+                            context.pub_led_feedback.publish(context.color_auto)
                             rospy.logwarn(e.message)
                     else:
                         rospy.logerr('Specified joy button index [{}] is out of bounds, max index is {}'.format(button, len(context.joy_msg.buttons)))
