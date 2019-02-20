@@ -159,6 +159,9 @@ class FsmNode():
 
         rospy.loginfo('Set yaw origin service: ' + self.set_yaw_origin_service)
 
+        tmp_name = rospy.get_param('~set_workspace_shape_service', 'human/set_workspace_shape')
+        self.set_workspace_shape_service = rospy.get_namespace() + tmp_name
+
         pointing_ray_topic = rospy.get_param('~pointing_ray_topic', 'human/pointing_ray')
 
         self.motion_dev_topic = rospy.get_param('~motion_dev_topic', '~motion_dev')
@@ -215,8 +218,8 @@ class FsmNode():
 
         self.wrist_gest_topic = rospy.get_param('~wrist_gest_topic', 'human/wrist_gesture')
 
-        set_workspace_shape_service = rospy.get_param('~set_workspace_shape_service', 'human/set_workspace_shape')
-        self.set_workspace_shape = rospy.ServiceProxy(set_workspace_shape_service, SetWorkspaceShape)
+
+        self.set_workspace_shape = rospy.ServiceProxy(self.set_workspace_shape_service, SetWorkspaceShape)
 
 
         self.sm = smach.StateMachine(outcomes = ['FINISH'])
@@ -349,7 +352,7 @@ class FsmNode():
         self.sm.register_transition_cb(self.state_transition_cb, cb_args = [self.sm])
         self.sis = smach_ros.IntrospectionServer('smach_server', self.sm, '/SM_RELLOC')
 
-        rospy.wait_for_service(set_workspace_shape_service)
+        rospy.wait_for_service(self.set_workspace_shape_service)
 
     def create_relloc_sm(self, is_motion_relloc = True):
         if is_motion_relloc:
@@ -391,6 +394,14 @@ class FsmNode():
                 )
                 smach.Sequence.add('MOCAP_RELLOC',
                     smach_ros.SimpleActionState(self.mocap_relloc_action_ns, EmptyAction)
+                )
+                smach.Sequence.add('SLEEP_A_BIT',
+                    CBStateExt(self.delay, cb_kwargs = {'context': self, 'duration': 0.5}),
+                )
+                smach.Sequence.add('SET_DEFAULT_WSPACE',
+                    smach_ros.ServiceState(self.set_workspace_shape_service, SetWorkspaceShape,
+                                            request = SetWorkspaceShapeRequest('', self.primary_wspace, False)
+                    )
                 )
 
         return relloc_sm
@@ -722,6 +733,38 @@ class FsmNode():
         context.pub_human_joint_state.publish(j_state)
 
         return 'succeeded'
+
+    @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
+    def delay(state, udata, context, duration):
+        loop_rate = rospy.Rate(50) # 50Hz
+
+        timer = None
+        timer_flag = {'value': False} # mutable object
+
+        while not rospy.is_shutdown():
+            if state.preempt_requested():
+                state.service_preempt()
+                if timer:
+                    timer.shutdown()
+                break
+
+            if not timer:
+                def timer_cb(e):
+                    timer_flag['value'] = True
+                    rospy.loginfo('Delay timer fired')
+
+                try:
+                    timer = rospy.Timer(rospy.Duration(duration), timer_cb, oneshot = True)
+                except e:
+                    rospy.logerr(e)
+                    return 'aborted'
+
+            if timer_flag['value']:
+                return 'succeeded'
+
+            loop_rate.sleep()
+
+        return 'preempted'
 
     def is_at_landing_spot(self):
         rp = kdl.Vector(self.robot_current_pose.pose.position.x,
