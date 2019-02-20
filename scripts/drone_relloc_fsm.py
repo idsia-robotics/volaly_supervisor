@@ -594,10 +594,10 @@ class FsmNode():
                             # Only process if changed
                             if changed_buttons[button]:
                                 if context.joy_msg.buttons[button]:
-                                    context.set_workspace_shape('', pressed_wspace)
+                                    context.set_workspace_shape('', pressed_wspace, False)
                                     rospy.loginfo('Changed workspace to: {}'.format(pressed_wspace))
                                 else:
-                                    context.set_workspace_shape('', released_wspace)
+                                    context.set_workspace_shape('', released_wspace, False)
                                     rospy.loginfo('Changed workspace to: {}'.format(released_wspace))
                         except rospy.ServiceException, e:
                             rospy.logwarn(e.message)
