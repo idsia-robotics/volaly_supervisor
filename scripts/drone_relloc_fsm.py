@@ -301,13 +301,14 @@ class FsmNode():
                                                    'aborted': 'WAIT_USER'})
 
 
-            follow_pointing_sm = smach.Concurrence(outcomes = ['landing', 'detaching', '' 'aborted'],
+            follow_pointing_sm = smach.Concurrence(outcomes = ['landing', 'detaching', 'aborted'],
                                                    default_outcome = 'detaching',
                                                    outcome_map = {'landing':   {'CHECK_MAX_DEV': 'land',
                                                                                 'FOLLOW_ME': 'preempted'},
                                                                   'detaching': {'CHECK_MAX_DEV': 'detach',
                                                                                 'FOLLOW_ME': 'preempted'},
-                                                                  'aborted':   {'FOLLOW_ME': 'aborted'}},
+                                                                  'aborted':   {'FOLLOW_ME': 'aborted',
+                                                                                'WAIT_DRONE': 'Landed'}},
                                                    child_termination_cb = lambda _: True)
 
             with follow_pointing_sm:
@@ -330,6 +331,10 @@ class FsmNode():
                                      'released_wspace': self.primary_wspace,
                                      'pressed_wspace':  self.secondary_wspace
                                      })
+                )
+
+                smach.Concurrence.add('WAIT_DRONE',
+                    CBStateExt(self.wait_drone, cb_kwargs = {'context': self, 'wait_states': ['Landed']})
                 )
 
             smach.StateMachine.add('FOLLOW_POINTING', follow_pointing_sm,
@@ -500,7 +505,7 @@ class FsmNode():
             return flight_state_names[context.last_known_flight_state]
 
         while not rospy.is_shutdown():
-            if context.last_known_flight_state in wait_states:
+            if flight_state_names[context.last_known_flight_state] in wait_states:
                 return flight_state_names[context.last_known_flight_state]
 
             if state.preempt_requested():
