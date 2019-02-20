@@ -31,6 +31,8 @@ from metawear_ros.msg import Vibration, VibrationPattern
 from drone_arena_msgs.msg import State as FlightState
 
 flight_state_names = {v: k for k,v in FlightState.__dict__.items() if k[0].isupper()}
+workspace_names = {v: k for k,v in SetWorkspaceShapeRequest.__dict__.items() if k[0].isupper() and isinstance(v, int)}
+workspace_ids   = {k: v for k,v in SetWorkspaceShapeRequest.__dict__.items() if k[0].isupper() and isinstance(v, int)}
 
 class CBStateExt(smach.State):
     def __init__(self, cb, cb_args=[], cb_kwargs={}, outcomes=[], input_keys=[], output_keys=[], io_keys=[]):
@@ -83,6 +85,17 @@ class FsmNode():
         else:
             # rospy.logfatal()
             raise ValueError('joy_workspace_button must be integer and greater than 0, instead its value is: {}'.format(tmp_button))
+
+        primary_wspace_name = rospy.get_param('~primary_workspace', 'WORKSPACE_XY_PLANE')
+        secondary_wspace_name = rospy.get_param('~secondary_workspace', 'WORKSPACE_CYLINDER')
+        try:
+            self.primary_wspace = workspace_ids[primary_wspace_name]
+            self.secondary_wspace = workspace_ids[secondary_wspace_name]
+        except KeyError, e:
+            rospy.logfatal('Wrong workspace value: {}. Available workspaces: {}'.format(e.message, workspace_ids.keys()))
+            raise e
+
+        rospy.loginfo('Workspaces: {} (primary), {} (secondary)'.format(primary_wspace_name, secondary_wspace_name))
 
         landing_spot = rospy.get_param('landing_spot', {'x': float('nan'), 'y': float('nan'), 'z': float('nan'), 'tolerance': float('nan')})
         self.landing_spot, self.landing_tolerance = self.get_landing_spot(**landing_spot)
@@ -310,9 +323,9 @@ class FsmNode():
                 smach.Concurrence.add('ADJUST_WORKSPACE_SHAPE',
                     CBStateExt(self.monitor_joy,
                         cb_kwargs = {'context': self,
-                                     'button': self.joy_workspace_button, # Left Trigger
-                                     'released_wspace': SetWorkspaceShapeRequest.WORKSPACE_XY_PLANE,
-                                     'pressed_wspace': SetWorkspaceShapeRequest.WORKSPACE_CYLINDER
+                                     'button':  self.joy_workspace_button, # Left Trigger
+                                     'released_wspace': self.primary_wspace,
+                                     'pressed_wspace':  self.secondary_wspace
                                      })
                 )
 

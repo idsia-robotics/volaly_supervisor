@@ -87,6 +87,8 @@
             <!-- Joypad -->
             <param name="joy_topic" value="/$(arg robot_name)/joy"/>
             <param name="joy_workspace_button" type="int" value="6"/> <!-- Left Trigger -->
+            <param name="primary_workspace" type="string" value="WORKSPACE_XY_PLANE"/> <!-- Default -->
+            <param name="secondary_workspace" type="string" value="WORKSPACE_CYLINDER"/> <!-- Button pressed -->
 
             <!-- Drone -->
             <param name="led_topic" value="/$(arg robot_name)/led"/>
