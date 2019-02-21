@@ -386,7 +386,18 @@ class FsmNode():
             relloc_sm = smach.Sequence(outcomes = ['succeeded', 'preempted', 'aborted'],
                                         connector_outcome = 'succeeded')
 
+            v_msg = VibrationPattern()
+            v_msg.pattern.append(Vibration(power=100, duration=rospy.Duration(0.080)))
+            v_msg.pattern.append(Vibration(power=0,   duration=rospy.Duration(0.200)))
+            v_msg.pattern.append(Vibration(power=100, duration=rospy.Duration(0.080)))
+            v_msg.pattern.append(Vibration(power=0,   duration=rospy.Duration(0.200)))
+            v_msg.pattern.append(Vibration(power=100, duration=rospy.Duration(0.080)))
+
             with relloc_sm:
+                smach.Sequence.add_auto('NOTIFY_USER_RELLOC',
+                    CBStateExt(self.vibrate_pattern, cb_kwargs = {'context': self, 'pattern': v_msg}),
+                    ['done']
+                )
                 smach.Sequence.add_auto('CHECK_MAX_DEV',
                     CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self}),
                     ['detach', 'land']
@@ -639,6 +650,11 @@ class FsmNode():
     @smach.cb_interface(outcomes = ['done'])
     def vibrate(state, udata, context, duration):
         context.pub_vibration.publish(rospy.Duration(duration))
+        return 'done'
+
+    @smach.cb_interface(outcomes = ['done'])
+    def vibrate_pattern(state, udata, context, pattern):
+        context.pub_vibration_pattern.publish(pattern)
         return 'done'
 
     @smach.cb_interface(outcomes = ['land', 'detach', 'preempted'])
