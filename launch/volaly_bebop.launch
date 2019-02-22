@@ -127,5 +127,7 @@
             <param name="motion_stop_threshold" value="0.005"/>
             <param name="motion_timewindow" value="3.0"/>
         </node>
+
+        <node name="beacons_fsm" type="beacons_fsm.py" pkg="hmri_experiments" output="screen" required="true"/>
     </group>
 </launch>
