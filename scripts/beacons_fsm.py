@@ -122,7 +122,7 @@ class FsmNode():
                                'preempted': 'FINISH'})
 
             smach.StateMachine.add('WAIT_FOR_LANDING',
-                smach.CBState(self.wait_for_relloc_fsm_state, cb_kwargs = {'context': self, 'expected_state': 'LANDING'}),
+                smach.CBState(self.wait_for_relloc_fsm_state, cb_kwargs = {'context': self, 'expected_state': 'LAND'}),
                 transitions = {'ready': 'INDICATE_ALL_COMPLETE',
                                'preempted': 'FINISH'})
 
