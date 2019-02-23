@@ -128,6 +128,6 @@
             <param name="motion_timewindow" value="3.0"/>
         </node>
 
-        <node name="beacons_fsm" type="beacons_fsm.py" pkg="hmri_experiments" output="screen" required="true"/>
+        <node name="beacons_fsm" type="beacons_fsm.py" pkg="volaly_supervisor" output="screen" required="true"/>
     </group>
 </launch>
