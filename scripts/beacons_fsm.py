@@ -58,7 +58,8 @@ class FsmNode():
         self.sub_current_pose = rospy.Subscriber(robot_current_pose_topic, PoseStamped, self.robot_current_pose_cb)
         self.robot_current_pose = None
 
-        self.target_threshold = rospy.get_param('~target_threshold', 0.10) # 20cm
+        self.ignore_z = rospy.get_param('~ignore_z', True)
+        self.target_threshold = rospy.get_param('~target_threshold', 0.10) # 10cm
 
         self.state_name_topic = rospy.get_param('~state_name_topic', '~state')
         self.pub_state_name = rospy.Publisher(self.state_name_topic, String, queue_size = 10, latch = True)
@@ -176,9 +177,10 @@ class FsmNode():
         robot_p = tfc.fromMsg(self.robot_current_pose.pose)
         beacon_p = tf2_geometry_msgs.transform_to_kdl(t)
 
-        # Ignore z-axis
-        robot_p.p[2] = 0.0
-        beacon_p.p[2] = 0.0
+        # Ignore z-axis?
+        if self.ignore_z:
+            robot_p.p[2] = 0.0
+            beacon_p.p[2] = 0.0
 
         d = (beacon_p.p - robot_p.p).Norm()
 
