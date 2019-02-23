@@ -54,7 +54,7 @@ class FsmNode():
         self.tf_buff = tf2_ros.Buffer()
         self.tf_ls = tf2_ros.TransformListener(self.tf_buff)
 
-        robot_current_pose_topic = rospy.get_param('~robot_current_pose_topic', '/optitrack/bebop')
+        robot_current_pose_topic = rospy.get_param('~robot_current_pose_topic', '/optitrack/robot')
         self.sub_current_pose = rospy.Subscriber(robot_current_pose_topic, PoseStamped, self.robot_current_pose_cb)
         self.robot_current_pose = None
 
