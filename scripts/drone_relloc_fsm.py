@@ -13,7 +13,7 @@ import message_filters as mf
 import tf_conversions as tfc
 
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Bool, Duration, Float32, String, ColorRGBA
+from std_msgs.msg import Bool, UInt8, Duration, Float32, String, ColorRGBA
 from std_srvs.srv import Empty, EmptyRequest
 from geometry_msgs.msg import PoseStamped, Quaternion, Vector3Stamped
 from sensor_msgs.msg import JointState, Joy
@@ -153,6 +153,9 @@ class FsmNode():
 
         vibration_pattern_topic = rospy.get_param('~vibration_pattern_topic', '{}/vibration_pattern'.format(self.bracelet_name))
         self.pub_vibration_pattern = rospy.Publisher(vibration_pattern_topic, VibrationPattern, queue_size = 1)
+
+        execute_timer_topic = rospy.get_param('~execute_timer_topic', '{}/execute_timer'.format(self.bracelet_name))
+        self.pub_execute_timer = rospy.Publisher(execute_timer_topic, UInt8, queue_size = 1)
 
         tmp_name = rospy.get_param('~set_yaw_origin_service', '{}/set_yaw_origin'.format(self.bracelet_name))
         self.set_yaw_origin_service = rospy.get_namespace() + tmp_name
@@ -394,8 +397,12 @@ class FsmNode():
             v_msg.pattern.append(Vibration(power=100, duration=rospy.Duration(0.080)))
 
             with relloc_sm:
+                # smach.Sequence.add_auto('NOTIFY_USER_RELLOC',
+                #     CBStateExt(self.vibrate_pattern, cb_kwargs = {'context': self, 'pattern': v_msg}),
+                #     ['done']
+                # )
                 smach.Sequence.add_auto('NOTIFY_USER_RELLOC',
-                    CBStateExt(self.vibrate_pattern, cb_kwargs = {'context': self, 'pattern': v_msg}),
+                    CBStateExt(self.vibrate_3_times, cb_kwargs = {'context': self, 'timer_id': 0}),
                     ['done']
                 )
                 smach.Sequence.add_auto('CHECK_MAX_DEV',
@@ -655,6 +662,11 @@ class FsmNode():
     @smach.cb_interface(outcomes = ['done'])
     def vibrate_pattern(state, udata, context, pattern):
         context.pub_vibration_pattern.publish(pattern)
+        return 'done'
+
+    @smach.cb_interface(outcomes = ['done'])
+    def vibrate_3_times(state, udata, context, timer_id):
+        context.pub_execute_timer.publish(timer_id)
         return 'done'
 
     @smach.cb_interface(outcomes = ['land', 'detach', 'preempted'])
