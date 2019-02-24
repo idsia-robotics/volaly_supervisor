@@ -154,8 +154,8 @@ class FsmNode():
         vibration_pattern_topic = rospy.get_param('~vibration_pattern_topic', '{}/vibration_pattern'.format(self.bracelet_name))
         self.pub_vibration_pattern = rospy.Publisher(vibration_pattern_topic, VibrationPattern, queue_size = 1)
 
-        execute_timer_topic = rospy.get_param('~execute_timer_topic', '{}/execute_timer'.format(self.bracelet_name))
-        self.pub_execute_timer = rospy.Publisher(execute_timer_topic, UInt8, queue_size = 1)
+        exec_timer_topic = rospy.get_param('~exec_timer_topic', '{}/exec_timer'.format(self.bracelet_name))
+        self.pub_exec_timer = rospy.Publisher(exec_timer_topic, UInt8, queue_size = 1)
 
         tmp_name = rospy.get_param('~set_yaw_origin_service', '{}/set_yaw_origin'.format(self.bracelet_name))
         self.set_yaw_origin_service = rospy.get_namespace() + tmp_name
@@ -666,7 +666,7 @@ class FsmNode():
 
     @smach.cb_interface(outcomes = ['done'])
     def vibrate_3_times(state, udata, context, timer_id):
-        context.pub_execute_timer.publish(timer_id)
+        context.pub_exec_timer.publish(timer_id)
         return 'done'
 
     @smach.cb_interface(outcomes = ['land', 'detach', 'preempted'])
