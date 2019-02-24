@@ -97,6 +97,7 @@
             <param name="button_topic" value="human/$(arg bracelet_name)/button"/>
             <param name="vibration_topic" value="human/$(arg bracelet_name)/vibration2"/>
             <param name="vibration_pattern_topic" value="human/$(arg bracelet_name)/vibration_pattern"/>
+            <param name="exec_timer_topic" value="human/$(arg bracelet_name)/exec_timer"/>
             <param name="hand_altitude_topic" value="human/$(arg bracelet_name)/altitude"/>
             <param name="pointing_ray_topic" value="human/pointing_ray"/>
 
