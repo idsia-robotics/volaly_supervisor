@@ -141,5 +141,16 @@
             <param name="target_threshold_xy" value="0.10"/>
             <param name="target_threshold_z" value="0.20"/>
         </node>
+
+        <node name="beacon1_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
+            args="-0.6 -0.6 0.90  0.0 0.0 0.0  World beacon1 20" />
+        <node name="beacon2_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
+            args="-1.2 1.2  0.43  0.0 0.0 0.0  World beacon2 20" />
+        <node name="beacon3_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
+            args=" 1.2 0.0  0.10  0.0 0.0 0.0  World beacon3 20" />
+        <!--node name="beacon4_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
+            args="0.0  0.0 0.0  0.0 0.0 0.0  World beacon4 20" /-->
+        <!--node name="beacon5_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
+            args="-1.2 0.0 0.0  0.0 0.0 0.0  World beacon5 20" /-->
     </group>
 </launch>
