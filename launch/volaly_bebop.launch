@@ -77,9 +77,11 @@
         <rosparam param="landing_spot">{x: 0.0, y: 0.0, z: 0.0, tolerance: 0.20}</rosparam>
 
         <!-- Set the same node name for compatibility -->
-        <!--node if="$(arg use_joystick)" name="relloc_fsm" type="joystick_fsm.py" pkg="hmri_experiments" output="screen" required="true">
-            <param name="robot_state_topic" value="/$(arg robot_name)/state"/>
-        </node-->
+        <node if="$(arg use_joystick)" name="drone_relloc_fsm" type="joystick_fsm.py" pkg="volaly_supervisor" output="screen" required="true">
+            <param name="robot_odom_topic" value="/$(arg robot_name)/odom"/>
+            <param name="robot_state_topic" value="/$(arg robot_name)/flight_state"/>
+            <param name="land_action_ns" value="/$(arg robot_name)/land_action"/>
+        </node>
 
         <node unless="$(arg use_joystick)" name="drone_relloc_fsm" type="drone_relloc_fsm.py" pkg="volaly_supervisor" output="screen" required="true">
             <param name="robot_odom_topic" value="/$(arg robot_name)/odom"/>
@@ -143,11 +145,11 @@
         </node>
 
         <node name="beacon1_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
-            args="-0.6 -0.6 0.90  0.0 0.0 0.0  World beacon1 20" />
+            args="0.6 0.0 0.90  0.0 0.0 0.0  World beacon1 20" />
         <node name="beacon2_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
-            args="-1.2 1.2  0.43  0.0 0.0 0.0  World beacon2 20" />
+            args="-0.6 1.2  0.43  0.0 0.0 0.0  World beacon2 20" />
         <node name="beacon3_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
-            args=" 1.2 0.0  0.10  0.0 0.0 0.0  World beacon3 20" />
+            args="-0.6 -0.6  0.10  0.0 0.0 0.0  World beacon3 20" />
         <!--node name="beacon4_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"
             args="0.0  0.0 0.0  0.0 0.0 0.0  World beacon4 20" /-->
         <!--node name="beacon5_tf" type="static_transform_publisher" pkg="tf" output="screen" required="true"

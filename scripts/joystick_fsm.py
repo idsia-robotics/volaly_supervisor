@@ -12,6 +12,7 @@ import PyKDL as kdl
 import message_filters as mf
 import tf_conversions as tfc
 
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool, Duration, Float32, String
 from geometry_msgs.msg import PoseStamped, Quaternion
 
@@ -41,8 +42,8 @@ class FsmNode():
 
         self.land_action_ns = rospy.get_param('~land_action_ns', '/drone/land_action')
 
-        robot_current_pose_topic = rospy.get_param('~robot_current_pose_topic', '/optitrack/drone')
-        self.sub_current_pose = rospy.Subscriber(robot_current_pose_topic, PoseStamped, self.robot_current_pose_cb)
+        robot_odom_topic = rospy.get_param('~robot_odom_topic', '/drone/odom')
+        self.sub_odom = rospy.Subscriber(robot_odom_topic, Odometry, self.robot_odom_cb)
         self.robot_current_pose = PoseStamped()
 
         self.state_name_topic = rospy.get_param('~state_name_topic', '~state')
@@ -62,10 +63,16 @@ class FsmNode():
         self.sm = smach.StateMachine(outcomes = ['FINISH'])
 
         with self.sm:
+            # smach.StateMachine.add('WAIT_USER',
+            #     smach.CBState(self.check_button, cb_kwargs = {'context': self}),
+            #     transitions = {'pressed': 'FOLLOW_POINTING',
+            #                    'preempted': 'FINISH'})
+
             smach.StateMachine.add('WAIT_USER',
-                smach.CBState(self.check_button, cb_kwargs = {'context': self}),
-                transitions = {'pressed': 'FOLLOW_POINTING',
-                               'preempted': 'FINISH'})
+                smach.CBState(self.wait_for_flying, cb_kwargs = {'context': self}),
+                transitions = {'succeeded': 'FOLLOW_POINTING',
+                               'aborted':   'FINISH',
+                               'preempted': 'WAIT_USER'})
 
             smach.StateMachine.add('FOLLOW_POINTING',
                 smach.CBState(self.wait_for_landing, cb_kwargs = {'context': self}),
@@ -82,6 +89,9 @@ class FsmNode():
         self.sm.register_start_cb(self.state_transition_cb, cb_args = [self.sm])
         self.sm.register_transition_cb(self.state_transition_cb, cb_args = [self.sm])
         self.sis = smach_ros.IntrospectionServer('smach_server', self.sm, '/SM_JOY')
+
+    def get_landing_spot(self, x, y, z, tolerance = 0.6):
+        return kdl.Vector(float(x), float(y), float(z)), tolerance
 
     def yaw_to_quat(self, yaw):
         q = kdl.Rotation.RPY(0.0, 0.0, yaw).GetQuaternion()
@@ -121,12 +131,12 @@ class FsmNode():
 
         self.last_button = data
 
-    def robot_current_pose_cb(self, msg):
-        # E.g. /optitrack/bebop in 'World' frame
-        self.robot_current_pose = msg
+    def robot_odom_cb(self, msg):
+        # E.g. /drone/odom in 'odom' frame
+        self.robot_current_pose = PoseStamped(header = msg.header, pose = msg.pose.pose)
 
     def flight_state_cb(self, msg):
-        self.last_known_flying_state = msg.state
+        self.last_known_flight_state = msg.state
         self.flight_state_event.set()
 
     @smach.cb_interface(outcomes = ['pressed', 'preempted'])
@@ -145,11 +155,24 @@ class FsmNode():
     @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
     def wait_for_landing(udata, context):
         while not rospy.is_shutdown():
-            if context.last_known_flying_state == FlyingState.state_landed:
+            if context.last_known_flight_state == FlightState.Landed:
                 if context.is_at_landing_spot():
                     return 'succeeded'
                 else:
                     return 'aborted'
+
+            # Sleep at max 0.1s, if there is an event it will wake up earlier
+            context.flight_state_event.wait(0.1)
+            # Force to wait another event
+            context.flight_state_event.clear()
+
+        return 'preempted'
+
+    @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
+    def wait_for_flying(udata, context):
+        while not rospy.is_shutdown():
+            if context.last_known_flight_state in [FlightState.TakingOff, FlightState.Hovering, FlightState.Flying]:
+                return 'succeeded'
 
             # Sleep at max 0.1s, if there is an event it will wake up earlier
             context.flight_state_event.wait(0.1)
