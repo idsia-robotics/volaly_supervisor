@@ -73,7 +73,8 @@
         </rosparam>
 
         <!-- Allow landing anywhere -->
-        <rosparam param="landing_spot">{x: nan, y: nan, z: nan, tolerance: nan}</rosparam>
+        <!-- <rosparam param="landing_spot">{x: nan, y: nan, z: nan, tolerance: nan}</rosparam> -->
+        <rosparam param="landing_spot">{x: 0.0, y: 0.0, z: 0.0, tolerance: 0.20}</rosparam>
 
         <!-- Set the same node name for compatibility -->
         <!--node if="$(arg use_joystick)" name="relloc_fsm" type="joystick_fsm.py" pkg="hmri_experiments" output="screen" required="true">
@@ -127,6 +128,8 @@
             <param name="motion_start_threshold" value="0.005"/>
             <param name="motion_stop_threshold" value="0.005"/>
             <param name="motion_timewindow" value="3.0"/>
+
+            <param name="allow_detach" value="false"/>
         </node>
 
         <node name="beacons_fsm" type="beacons_fsm.py" pkg="volaly_supervisor" output="screen" required="true" clear_params="true">

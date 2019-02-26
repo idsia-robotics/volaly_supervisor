@@ -100,8 +100,14 @@ class FsmNode():
         landing_spot = rospy.get_param('landing_spot', {'x': float('nan'), 'y': float('nan'), 'z': float('nan'), 'tolerance': float('nan')})
         self.landing_spot, self.landing_tolerance = self.get_landing_spot(**landing_spot)
 
+        self.allow_detach = rospy.get_param('~allow_detach', True)
+
         if math.isnan(self.landing_spot.Norm()):
             rospy.logwarn('Landing spot is not specified, allow landing anywhere')
+            if not self.allow_detach:
+                e = 'Neither landing spot nor allow_detach is set'
+                rospy.logfatal(e)
+                raise ValueError(e)
 
         wps = rospy.get_param('task_waypoints',
             {'frame_id': 'World',
@@ -405,9 +411,8 @@ class FsmNode():
                     CBStateExt(self.vibrate_3_times, cb_kwargs = {'context': self, 'timer_id': 0}),
                     ['done']
                 )
-                smach.Sequence.add_auto('CHECK_MAX_DEV',
-                    CBStateExt(self.check_max_deviation, cb_kwargs = {'context': self}),
-                    ['detach', 'land']
+                smach.Sequence.add('WAIT_USER_ATTACH',
+                    CBStateExt(self.wait_user_attach, cb_kwargs = {'context': self})
                 )
                 smach.Sequence.add('ADJUST_USER_GEOM',
                     CBStateExt(self.adjust_user_geom, cb_kwargs = {'context': self}),
@@ -669,8 +674,8 @@ class FsmNode():
         context.pub_exec_timer.publish(timer_id)
         return 'done'
 
-    @smach.cb_interface(outcomes = ['land', 'detach', 'preempted'])
-    def check_max_deviation(state, udata, context):
+    @smach.cb_interface(outcomes = ['succeeded', 'preempted', 'aborted'])
+    def wait_user_attach(state, udata, context, vibrate=True):
         loop_rate = rospy.Rate(10.0) # 10Hz
 
         goal_time = rospy.Time.now() + rospy.Duration(3.0) # fly at least 3s
@@ -721,19 +726,102 @@ class FsmNode():
                     dim_color = context.scale_color(context.color_detach, dim_factor)
 
                     if context.hold_flag:
-                        hold_timer.shutdown()
+                        if hold_timer:
+                            hold_timer.shutdown()
                         hold_timer = None
 
-                        # if context.is_at_landing_spot():
-                        #     return 'land'
-                        # else:
-                        #     return 'detach'
-
-                        context.pub_led_feedback.publish(context.color_auto)
-                        return 'detach'
+                        context.pub_led_feedback.publish(context.color_followme)
+                        return 'succeeded'
 
                     if context.max_dev > context.motion_start_threshold:
-                        hold_timer.shutdown()
+                        if hold_timer:
+                            hold_timer.shutdown()
+                        hold_timer = None
+                        context.hold_counter = hold_counter_init
+
+                        dim_factor = 1.0
+                        blink_counter = 0
+                        context.pub_led_feedback.publish(context.color_auto)
+
+                        rospy.loginfo('Hold timer is canceled')
+
+            if state.preempt_requested():
+                state.service_preempt()
+                break
+
+            loop_rate.sleep()
+
+        context.pub_led_feedback.publish(context.color_auto)
+        return 'preempted'
+
+    @smach.cb_interface(outcomes = ['land', 'detach', 'preempted'])
+    def check_max_deviation(state, udata, context, vibrate=True):
+        loop_rate = rospy.Rate(10.0) # 10Hz
+
+        goal_time = rospy.Time.now() + rospy.Duration(3.0) # fly at least 3s
+
+        hold_dur = rospy.Duration(1.0)
+        hold_counter_init = 3
+        context.hold_counter = hold_counter_init # hold arm still for 3s
+        context.hold_flag = False
+
+        hold_timer = None
+
+        time_steps = (hold_dur * hold_counter_init) / loop_rate.sleep_dur
+        dim_decrement = 1.0 / time_steps
+        dim_factor = 1.0
+        dim_color = context.scale_color(context.color_detach, dim_factor)
+
+        blink_counter = 0
+
+        context.pub_led_feedback.publish(context.color_followme)
+
+        while not rospy.is_shutdown():
+            blink_counter += 1
+
+            if not hold_timer:
+                if blink_counter % 5 == 0:
+                    context.pub_led_feedback.publish(context.color_followme)
+                else:
+                    context.pub_led_feedback.publish(context.scale_color(context.color_followme, 0.3))
+
+            if rospy.Time.now() > goal_time:
+                if not hold_timer:
+                    if context.max_dev < context.motion_stop_threshold:
+                        rospy.loginfo('Hold timer is on')
+
+                        def hold_cb(e):
+                            context.hold_counter -= 1
+                            if context.hold_counter > 0:
+                                if context.is_at_landing_spot() or context.allow_detach or context.allow_attach:
+                                    context.pub_vibration.publish(rospy.Duration(0.150))
+                            else:
+                                context.hold_flag = True
+
+                        hold_timer = rospy.Timer(hold_dur, hold_cb)
+                else:
+                    context.pub_led_feedback.publish(dim_color)
+
+                    dim_factor -= dim_decrement
+                    dim_factor = 1.0 if dim_factor < 0.0 else dim_factor
+                    dim_color = context.scale_color(context.color_detach, dim_factor)
+
+                    if context.hold_flag:
+                        if hold_timer:
+                            hold_timer.shutdown()
+                        hold_timer = None
+
+                        context.pub_led_feedback.publish(context.color_auto)
+
+                        if context.is_at_landing_spot():
+                            return 'land'
+                        else:
+                            if context.allow_detach:
+                                return 'detach'
+
+                    if context.max_dev > context.motion_start_threshold:
+                        if hold_timer:
+                            hold_timer.shutdown()
                         hold_timer = None
                         context.hold_counter = hold_counter_init
 
