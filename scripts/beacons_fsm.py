@@ -70,8 +70,8 @@ class FsmNode():
 
         self.sm = smach.StateMachine(outcomes = ['FINISH'])
 
-        initial_tt = np.random.choice(list(self.beacons_set), size = len(self.beacons_set), replace = False)
-        self.sm.userdata.targets_list = initial_tt.tolist()
+        self.sm.userdata.targets_list = self.generate_targets_list(self.beacons_set)
+
         rospy.loginfo('Targets list: {}'.format(self.sm.userdata.targets_list))
 
         with self.sm:
@@ -146,6 +146,12 @@ class FsmNode():
         self.sm.register_transition_cb(self.state_transition_cb, cb_args = [self.sm])
         self.sis = smach_ros.IntrospectionServer('smach_server', self.sm, '/SM_BEACONS')
 
+    def generate_targets_list(self, targets):
+        tt = np.random.choice(list(targets), size = len(targets), replace = False)
+        targets_list = tt.tolist()
+        targets_list.append(tt[0]) # Add the first target again since we are discarding the first segment
+        return targets_list
+
     def relloc_fsm_state_cb(self, msg):
         self.relloc_fsm_state = msg.data
         self.relloc_fsm_event.set()
@@ -205,8 +211,7 @@ class FsmNode():
     @smach.cb_interface(input_keys = ['targets_list'], output_keys = ['targets_list', 'target'], outcomes = ['done', 'empty', 'preempted'])
     def choose_next_target(udata, context):
         if not udata.targets_list:
-            tt = np.random.choice(list(context.beacons_set), size = len(context.beacons_set), replace = False)
-            udata.targets_list = tt.tolist()
+            udata.targets_list = context.generate_targets_list(context.beacons_set)
             rospy.loginfo('Targets list: {}'.format(udata.targets_list))
             udata.target = None
             return 'empty'
