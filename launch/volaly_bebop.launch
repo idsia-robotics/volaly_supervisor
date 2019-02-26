@@ -1,15 +1,19 @@
 <launch>
     <arg name="namespace" value="/volaly"/>
-    <arg name="bag_prefix" default="volaly_drone"/>
+    <arg name="bag_prefix" default="volaly"/>
     <arg name="use_joystick" default="false"/>
     <arg name="robot_name" default="bebop"/> <!-- Crazyflie -->
     <arg name="use_frame_ns" default="false"/>
     <arg name="bracelet_name" default="mwear"/> <!-- MetaWear -->
     <arg name="mwear_address" default="c1:9d:0e:3c:f6:7e"/>
 
-    <!-- <include file="$(find hmri_bags)/launch/record.launch">
-        <arg name="prefix" value="$(arg bag_prefix)"/>
-    </include> -->
+    <arg unless="$(arg use_joystick)" name="control_mode" value="pointing"/>
+    <arg if="$(arg use_joystick)" name="control_mode" value="joystick"/>
+
+    <include file="$(find volaly_bags)/launch/record.launch">
+        <arg name="prefix" value="$(arg bag_prefix)_$(arg control_mode)"/>
+        <arg name="subdir" value="iros2019"/>
+    </include>
 
     <group ns="$(arg namespace)">
         <node name="$(arg robot_name)_actions" pkg="volaly_robots" type="drone_action.py" required="true" output="screen">
