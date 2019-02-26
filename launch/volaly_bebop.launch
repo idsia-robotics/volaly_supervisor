@@ -29,7 +29,7 @@
             <param name="feedback_service" value="/$(arg robot_name)/give_feedback"/>
         </node>
 
-        <include file="$(find volaly_kinematics)/launch/human_kinematics.launch">
+        <include unless="$(arg use_joystick)" file="$(find volaly_kinematics)/launch/human_kinematics.launch">
             <!-- <arg name="namespace" value="$(arg namespace)"/> -->
             <arg name="publish_rate" value="50" />
             <arg name="mwear_address" value="$(arg mwear_address)"/>
