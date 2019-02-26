@@ -59,7 +59,8 @@ class FsmNode():
         self.robot_current_pose = None
 
         self.ignore_z = rospy.get_param('~ignore_z', True)
-        self.target_threshold = rospy.get_param('~target_threshold', 0.10) # 10cm
+        self.target_threshold_xy = rospy.get_param('~target_threshold_xy', 0.10) # 10cm
+        self.target_threshold_z = rospy.get_param('~target_threshold_z', 0.20) # 10cm
 
         self.state_name_topic = rospy.get_param('~state_name_topic', '~state')
         self.pub_state_name = rospy.Publisher(self.state_name_topic, String, queue_size = 10, latch = True)
@@ -165,26 +166,28 @@ class FsmNode():
         target_frame_id = self.beacons_prefix + str(target_id)
 
         if not self.robot_current_pose:
-            return float('inf')
+            return float('inf'), float('inf')
 
         try:
             # Beacon in robot's frame
             t = self.tf_buff.lookup_transform(self.robot_current_pose.header.frame_id, target_frame_id, rospy.Time())
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException), e:
             rospy.logerr_throttle(1.0, e)
-            return float('inf')
+            return float('inf'), float('inf')
 
         robot_p = tfc.fromMsg(self.robot_current_pose.pose)
         beacon_p = tf2_geometry_msgs.transform_to_kdl(t)
 
         # Ignore z-axis?
-        if self.ignore_z:
-            robot_p.p[2] = 0.0
-            beacon_p.p[2] = 0.0
+        # if self.ignore_z:
+        d_z = np.fabs(beacon_p.p[2] - robot_p.p[2])
 
-        d = (beacon_p.p - robot_p.p).Norm()
+        robot_p.p[2] = 0.0
+        beacon_p.p[2] = 0.0
 
-        return d
+        d_xy = (beacon_p.p - robot_p.p).Norm()
+
+        return d_xy, d_z
 
     @smach.cb_interface(output_keys = ['targets_list'], outcomes = ['ready', 'preempted'])
     def wait_for_relloc_fsm_state(udata, context, expected_state):
@@ -236,7 +239,8 @@ class FsmNode():
         loop_rate = rospy.Rate(30.0) # 30Hz
 
         while not rospy.is_shutdown():
-            if context.distance_to_target(udata.target) < context.target_threshold:
+            (xy, z) = context.distance_to_target(udata.target)
+            if  xy < context.target_threshold_xy and z < context.target_threshold_z:
                 return 'entered'
             loop_rate.sleep()
 
@@ -249,7 +253,8 @@ class FsmNode():
         goal_time = rospy.Time.now() + rospy.Duration(2.0) # stay there at least 2s
 
         while not rospy.is_shutdown():
-            if context.distance_to_target(udata.target) < context.target_threshold:
+            (xy, z) = context.distance_to_target(udata.target)
+            if  xy < context.target_threshold_xy and z < context.target_threshold_z:
                 if rospy.Time.now() > goal_time:
                     return 'confirmed'
             else:

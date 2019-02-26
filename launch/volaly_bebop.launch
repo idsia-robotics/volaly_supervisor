@@ -138,7 +138,8 @@
             </rosparam>
             <param name="robot_current_pose_topic" value="/optitrack/$(arg robot_name)"/>
             <param name="ignore_z" value="false"/>
-            <param name="target_threshold" value="0.10"/>
+            <param name="target_threshold_xy" value="0.10"/>
+            <param name="target_threshold_z" value="0.20"/>
         </node>
     </group>
 </launch>
