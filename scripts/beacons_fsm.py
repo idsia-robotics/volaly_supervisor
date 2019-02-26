@@ -75,10 +75,10 @@ class FsmNode():
         rospy.loginfo('Targets list: {}'.format(self.sm.userdata.targets_list))
 
         with self.sm:
-            # smach.StateMachine.add('INIT_ALL_CLEAR',
-            #     smach.CBState(self.set_all_color, cb_kwargs = {'context': self, 'color': self.color_complete, 'delay': 1.0}),
-            #     transitions = {'done': 'WAIT_FOR_RELLOC',
-            #                    'preempted': 'FINISH'})
+            smach.StateMachine.add('INIT_ALL_CLEAR',
+                smach.CBState(self.set_all_color, cb_kwargs = {'context': self, 'color': self.color_clear, 'delay': 1.0}),
+                transitions = {'done': 'WAIT_FOR_RELLOC',
+                               'preempted': 'FINISH'})
 
             smach.StateMachine.add('WAIT_FOR_RELLOC',
                 smach.CBState(self.wait_for_relloc_fsm_state, cb_kwargs = {'context': self, 'expected_state': 'FOLLOW_POINTING'}),
@@ -273,6 +273,7 @@ class FsmNode():
 
         self.sis.start()
 
+        rospy.sleep(1.0)
         smach_thread = threading.Thread(target = self.sm.execute)
         smach_thread.start()
 
