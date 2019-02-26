@@ -82,6 +82,7 @@
 
         <!-- Set the same node name for compatibility -->
         <node if="$(arg use_joystick)" name="drone_relloc_fsm" type="joystick_fsm.py" pkg="volaly_supervisor" output="screen" required="true">
+            <param name="button_topic" value="/$(arg robot_name)/joy/buttons[4]" />
             <param name="robot_odom_topic" value="/$(arg robot_name)/odom"/>
             <param name="robot_state_topic" value="/$(arg robot_name)/flight_state"/>
             <param name="land_action_ns" value="/$(arg robot_name)/land_action"/>
