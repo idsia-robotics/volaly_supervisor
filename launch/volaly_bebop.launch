@@ -80,6 +80,12 @@
         <!-- <rosparam param="landing_spot">{x: nan, y: nan, z: nan, tolerance: nan}</rosparam> -->
         <rosparam param="landing_spot">{x: 0.0, y: 0.0, z: 0.0, tolerance: 0.20}</rosparam>
 
+        <node name="user_joy" pkg="joy" type="joystick_node">
+            <param name="dev" value="/dev/input/js1" />
+            <param name="deadzone" value="0.2" />
+            <param name="autorepeat_rate" value="20" />
+        </node>
+
         <!-- Set the same node name for compatibility -->
         <node if="$(arg use_joystick)" name="drone_relloc_fsm" type="joystick_fsm.py" pkg="volaly_supervisor" output="screen" required="true">
             <param name="button_topic" value="/$(arg robot_name)/joy/buttons[4]" />
@@ -93,7 +99,9 @@
             <param name="robot_state_topic" value="/$(arg robot_name)/flight_state"/>
 
             <!-- Joypad -->
-            <param name="joy_topic" value="/$(arg robot_name)/joy"/>
+            <!-- <param name="joy_topic" value="/$(arg robot_name)/joy"/> -->
+            <param name="joy_topic" value="user_joy"/>
+
             <param name="joy_workspace_button" type="int" value="6"/> <!-- Left Trigger -->
             <param name="primary_workspace" type="string" value="WORKSPACE_CYLINDER"/> <!-- Default -->
             <param name="secondary_workspace" type="string" value="WORKSPACE_XY_PLANE"/> <!-- Button pressed -->
