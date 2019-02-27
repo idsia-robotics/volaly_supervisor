@@ -80,7 +80,8 @@
         <!-- <rosparam param="landing_spot">{x: nan, y: nan, z: nan, tolerance: nan}</rosparam> -->
         <rosparam param="landing_spot">{x: 0.0, y: 0.0, z: 0.0, tolerance: 0.20}</rosparam>
 
-        <node name="user_joy" pkg="joy" type="joystick_node">
+        <node name="user_joy" pkg="joy" type="joy_node" output="screen" required="true">
+            <remap from="joy" to="user_joy" />
             <param name="dev" value="/dev/input/js1" />
             <param name="deadzone" value="0.2" />
             <param name="autorepeat_rate" value="20" />
